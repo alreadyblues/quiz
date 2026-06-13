@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>국내 시사 퀴즈</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f5f5f0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+    .container {
+      background: #fff;
+      border-radius: 16px;
+      padding: 2rem;
+      max-width: 600px;
+      width: 100%;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    }
+    h1 { font-size: 22px; font-weight: 600; color: #1a1a1a; margin-bottom: 0.4rem; }
+    .subtitle { font-size: 14px; color: #888; margin-bottom: 1.5rem; }
+    .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 1.5rem; }
+    .stat { background: #f5f5f0; border-radius: 10px; padding: 0.8rem; text-align: center; }
+    .stat-val { font-size: 18px; font-weight: 600; color: #1a1a1a; }
+    .stat-label { font-size: 12px; color: #888; margin-top: 2px; }
+    button.primary {
+      width: 100%; padding: 13px; background: #1a1a1a; color: #fff;
+      border: none; border-radius: 10px; font-size: 15px; font-weight: 500;
+      cursor: pointer; transition: opacity 0.15s;
+    }
+    button.primary:hover { opacity: 0.85; }
+    .progress-bar { background: #eee; border-radius: 4px; height: 5px; margin-bottom: 1.25rem; }
+    .progress-fill { background: #1a1a1a; height: 5px; border-radius: 4px; transition: width 0.3s; }
+    .meta { display: flex; justify-content: space-between; font-size: 13px; color: #888; margin-bottom: 1rem; }
+    .question-box {
+      background: #f9f9f7; border: 1px solid #e8e8e4; border-radius: 12px;
+      padding: 1.2rem; margin-bottom: 1.2rem;
+      font-size: 16px; line-height: 1.7; color: #1a1a1a;
+    }
+    .options { display: grid; gap: 10px; }
+    .opt-btn {
+      width: 100%; padding: 12px 16px; text-align: left;
+      background: #fff; border: 1px solid #ddd; border-radius: 10px;
+      font-size: 14px; line-height: 1.5; cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .opt-btn:hover:not(:disabled) { background: #f5f5f0; border-color: #bbb; }
+    .opt-btn.correct { background: #e8f5e9; border-color: #4caf50; color: #2e7d32; }
+    .opt-btn.wrong { background: #fce4ec; border-color: #e57373; color: #c62828; }
+    .opt-btn:disabled { cursor: default; }
+    .feedback {
+      margin-top: 1rem; padding: 1rem; border-radius: 10px;
+      font-size: 14px; line-height: 1.6; display: none;
+    }
+    .feedback.correct { background: #e8f5e9; border: 1px solid #a5d6a7; color: #2e7d32; }
+    .feedback.wrong { background: #fce4ec; border: 1px solid #f48fb1; color: #c62828; }
+    .feedback .expl { color: #555; font-size: 13px; margin-top: 4px; }
+    button.next-btn {
+      display: none; width: 100%; margin-top: 1rem; padding: 12px;
+      background: #1a1a1a; color: #fff; border: none; border-radius: 10px;
+      font-size: 14px; font-weight: 500; cursor: pointer;
+    }
+    button.next-btn:hover { opacity: 0.85; }
+    .result-emoji { font-size: 48px; text-align: center; margin-bottom: 1rem; }
+    .result-text { font-size: 15px; color: #555; text-align: center; margin-bottom: 1.5rem; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <div id="start-screen">
+    <div style="text-align:center; margin-bottom:1.5rem;">
+      <div style="font-size:40px; margin-bottom:0.5rem;">📰</div>
+      <h1>국내 시사 퀴즈</h1>
+      <p class="subtitle">매번 랜덤으로 출제되는 국내 시사 문제</p>
+    </div>
+    <div class="stat-row">
+      <div class="stat"><div class="stat-val">5</div><div class="stat-label">문제</div></div>
+      <div class="stat"><div class="stat-val">4지선다</div><div class="stat-label">형식</div></div>
+      <div class="stat"><div class="stat-val">랜덤</div><div class="stat-label">문제 출제</div></div>
+    </div>
+    <button class="primary" onclick="startGame()">게임 시작 →</button>
+  </div>
+
+  <div id="quiz-screen" class="hidden">
+    <div class="meta">
+      <span id="q-num"></span>
+      <span id="score-display"></span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+    <div class="question-box" id="q-text"></div>
+    <div class="options" id="options-container"></div>
+    <div class="feedback" id="feedback"></div>
+    <button class="next-btn" id="next-btn" onclick="nextQuestion()">다음 문제 →</button>
+  </div>
+
+  <div id="result-screen" class="hidden">
+    <div class="result-emoji" id="result-emoji"></div>
+    <p class="result-text" id="result-text"></p>
+    <div class="stat-row">
+      <div class="stat"><div class="stat-val" id="r-score"></div><div class="stat-label">점수</div></div>
+      <div class="stat"><div class="stat-val" id="r-correct"></div><div class="stat-label">정답</div></div>
+      <div class="stat"><div class="stat-val" id="r-grade"></div><div class="stat-label">등급</div></div>
+    </div>
+    <button class="primary" onclick="startGame()">↺ 다시 하기</button>
+  </div>
+
+</div>
+
+<script>
+const ALL_QUESTIONS = [
+  {
+    question: "2024년 4월 총선에서 제1야당인 더불어민주당이 획득한 의석수는 약 몇 석인가요?",
+    options: ["①약 108석", "②약 175석", "③약 192석", "④약 220석"],
+    answer: 1,
+    explanation: "2024년 4월 22대 총선에서 더불어민주당은 위성정당인 더불어민주연합 포함 약 175석을 획득하며 압승을 거뒀습니다."
+  },
+  {
+    question: "2024년 12월 윤석열 대통령이 선포했다가 6시간 만에 해제된 것은 무엇인가요?",
+    options: ["①긴급재정명령", "②계엄령", "③국가비상사태", "④대통령 긴급명령"],
+    answer: 1,
+    explanation: "윤석열 대통령은 2024년 12월 3일 비상계엄을 선포했으나 국회가 해제 결의안을 통과시키면서 약 6시간 만에 해제됐습니다."
+  },
+  {
+    question: "2023년 한국이 처음으로 발사에 성공한 독자 개발 우주발사체의 이름은?",
+    options: ["①나로호", "②천리안", "③누리호", "④아리랑"],
+    answer: 2,
+    explanation: "누리호(KSLV-II)는 순수 국내 기술로 개발된 한국형 발사체로, 2023년 5월 3차 발사에서 성공적으로 실용위성을 궤도에 올렸습니다."
+  },
+  {
+    question: "2024년 노벨 문학상을 수상한 한국 작가는 누구인가요?",
+    options: ["①조남주", "②한강", "③황석영", "④김영하"],
+    answer: 1,
+    explanation: "한강 작가는 2024년 노벨 문학상을 수상하며 한국인 최초, 아시아 여성 최초의 노벨 문학상 수상자가 됐습니다."
+  },
+  {
+    question: "2023년 한국의 합계출산율은 역대 최저를 기록했습니다. 약 얼마였나요?",
+    options: ["①0.72명", "②0.98명", "③1.10명", "④1.23명"],
+    answer: 0,
+    explanation: "2023년 한국의 합계출산율은 0.72명으로 역대 최저를 기록했습니다. OECD 국가 중 유일하게 1명 미만인 나라입니다."
+  },
+  {
+    question: "2024년 출범한 의료계 집단행동의 주된 원인은 무엇인가요?",
+    options: ["①의사 면허 갱신제 도입", "②의대 정원 확대 방침", "③원격진료 합법화", "④의료수가 인하"],
+    answer: 1,
+    explanation: "정부가 2025년부터 의대 정원을 2,000명 늘리겠다고 발표하자 의대생과 전공의들이 반발하며 집단 사직·휴학 등 집단행동에 나섰습니다."
+  },
+  {
+    question: "2023년 새만금 세계스카우트잼버리 대회가 개최된 곳은 어느 지역인가요?",
+    options: ["①충남 보령", "②전북 부안", "③경북 경주", "④강원 평창"],
+    answer: 1,
+    explanation: "2023년 새만금 세계스카우트잼버리는 전북 부안군 새만금 간척지에서 열렸으나 폭염, 의료 문제 등으로 큰 혼란을 겪었습니다."
+  },
+  {
+    question: "2024년 한국 정부가 발표한 '저출산 대책'의 핵심 명칭은?",
+    options: ["①인구혁신 2030", "②저출산 극복 특별법", "③인구국가비상사태", "④출산장려 특별대책"],
+    answer: 2,
+    explanation: "윤석열 대통령은 2024년 6월 저출산 문제를 국가비상사태로 선언하고 인구국가비상사태를 공식 선포했습니다."
+  },
+  {
+    question: "2023년 한국과 미국이 강화한 핵 억제 협의 체계의 이름은?",
+    options: ["①한미 핵공유협정", "②워싱턴 선언", "③핵비확산 공동협약", "④서울 안보선언"],
+    answer: 1,
+    explanation: "2023년 4월 한미 정상회담에서 채택된 워싱턴 선언을 통해 핵협의그룹(NCG) 설치 등 확장억제 강화 방안이 합의됐습니다."
+  },
+  {
+    question: "2024년 파리 올림픽에서 한국의 금메달 획득 개수는?",
+    options: ["①9개", "②11개", "③13개", "④15개"],
+    answer: 0,
+    explanation: "한국은 2024년 파리 올림픽에서 금메달 13개, 은메달 9개, 동메달 10개로 종합 8위를 기록했습니다. 금메달은 13개였습니다."
+  },
+  {
+    question: "2023년 한국이 가입한 다자 안보 협의체는?",
+    options: ["①나토(NATO)", "②쿼드(QUAD)", "③오커스(AUKUS)", "④파이브아이즈"],
+    answer: 0,
+    explanation: "한국은 2023년 나토 정상회의에 2년 연속 참석하며 협력을 강화했고, 나토 사이버방어센터에도 가입했습니다."
+  },
+  {
+    question: "2024년 한국에서 시행된 '단통법' 폐지 이후 달라진 것은?",
+    options: ["①통신사 선택 의무화", "②휴대폰 보조금 상한 폐지", "③5G 요금 인하 의무화", "④단말기 자급제 금지"],
+    answer: 1,
+    explanation: "2024년 단말기유통법(단통법) 폐지로 휴대폰 보조금 상한선이 없어져 통신사 간 보조금 경쟁이 가능해졌습니다."
+  },
+  {
+    question: "2023년 한국 정부가 일본과 합의한 일제 강제동원 피해자 배상 방식은?",
+    options: ["①일본 기업이 직접 배상", "②한국 정부 산하 재단이 대신 지급", "③한일 공동기금 설립", "④개인 청구권 포기 합의"],
+    answer: 1,
+    explanation: "한국 정부는 행정안전부 산하 일제강제동원피해자지원재단이 판결금을 대신 지급하는 '제3자 변제' 방식을 발표했습니다."
+  },
+  {
+    question: "2024년 한국에서 처음 도입된 '늘봄학교'는 어떤 제도인가요?",
+    options: ["①고등학생 대상 야간 자율학습 제도", "②초등학생 대상 방과후 돌봄 확대 제도", "③중학생 대상 진로교육 프로그램", "④유아 대상 공립 돌봄 서비스"],
+    answer: 1,
+    explanation: "늘봄학교는 초등학교에서 아침부터 저녁까지 돌봄과 교육 프로그램을 제공하는 제도로 2024년 전국적으로 확대 시행됐습니다."
+  },
+  {
+    question: "2023년 한국에서 개통된 수도권 광역급행철도의 이름은?",
+    options: ["①GTX-A", "②GTX-B", "③신안산선", "④동북선"],
+    answer: 0,
+    explanation: "GTX-A 노선이 2024년 3월 수서~동탄 구간을 시작으로 개통됐습니다. 수도권 외곽에서 서울 도심까지 빠르게 연결하는 광역급행철도입니다."
+  },
+  {
+    question: "2024년 한국 경제성장률(GDP)은 약 몇 %로 전망됐나요?",
+    options: ["①1.2%", "②2.3%", "③3.1%", "④4.0%"],
+    answer: 1,
+    explanation: "2024년 한국의 실질 GDP 성장률은 수출 호조에 힘입어 약 2.3% 수준을 기록한 것으로 집계됐습니다."
+  },
+  {
+    question: "2023년 한국이 체결한 '한-UAE 포괄적경제동반자협정(CEPA)'의 주요 내용은?",
+    options: ["①원유 무상 공급 협약", "②관세 철폐 및 무역 확대", "③군사 동맹 체결", "④비자 면제 협정"],
+    answer: 1,
+    explanation: "한-UAE CEPA는 양국 간 관세 철폐와 무역·투자 확대를 핵심으로 하며 2023년 서명됐습니다. 한국의 중동 국가와 첫 FTA입니다."
+  },
+  {
+    question: "2024년 한국 검찰이 수사한 '쌍방울 그룹 대북송금 의혹'과 관련된 인물은?",
+    options: ["①이재명 더불어민주당 대표", "②한동훈 국민의힘 대표", "③조국 조국혁신당 대표", "④이낙연 전 총리"],
+    answer: 0,
+    explanation: "이재명 더불어민주당 대표는 쌍방울 그룹의 대북송금 의혹과 관련해 검찰 수사와 재판을 받았습니다."
+  },
+  {
+    question: "2023년 한국에서 시행된 '중대재해처벌법' 확대 적용 대상은?",
+    options: ["①5인 미만 사업장", "②5인 이상 50인 미만 사업장", "③50인 이상 100인 미만 사업장", "④100인 이상 사업장"],
+    answer: 1,
+    explanation: "2024년부터 중대재해처벌법이 5인 이상 50인 미만 사업장까지 확대 적용됐습니다. 기존에는 50인 이상 사업장만 해당됐습니다."
+  },
+  {
+    question: "2024년 한국 최초로 유네스코 세계유산에 등재된 것은?",
+    options: ["①한국의 갯벌 추가 등재", "②가야 고분군", "③조선의 유교책판", "④매사냥 문화"],
+    answer: 1,
+    explanation: "가야 고분군은 2023년 유네스코 세계문화유산에 등재됐습니다. 경남·경북·전북 7개 고분군이 포함됐습니다."
+  }
+];
+
+let questions = [], current = 0, score = 0, answered = false;
+
+function show(id) {
+  ['start-screen','quiz-screen','result-screen'].forEach(s => {
+    document.getElementById(s).classList.add('hidden');
+  });
+  document.getElementById(id).classList.remove('hidden');
+}
+
+function shuffle(arr) {
+  return [...arr].sort(() => Math.random() - 0.5);
+}
+
+function startGame() {
+  questions = shuffle(ALL_QUESTIONS).slice(0, 5);
+  current = 0; score = 0;
+  show('quiz-screen');
+  showQuestion();
+}
+
+function showQuestion() {
+  answered = false;
+  const q = questions[current];
+  document.getElementById('q-num').textContent = `문제 ${current + 1} / 5`;
+  document.getElementById('score-display').textContent = `점수: ${score}점`;
+  document.getElementById('progress-fill').style.width = `${(current / 5) * 100}%`;
+  document.getElementById('q-text').textContent = q.question;
+  document.getElementById('feedback').style.display = 'none';
+  document.getElementById('next-btn').style.display = 'none';
+
+  const container = document.getElementById('options-container');
+  container.innerHTML = '';
+  q.options.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'opt-btn';
+    btn.textContent = opt;
+    btn.onclick = () => selectAnswer(i);
+    container.appendChild(btn);
+  });
+}
+
+function selectAnswer(idx) {
+  if (answered) return;
+  answered = true;
+  const q = questions[current];
+  const isCorrect = idx === q.answer;
+  if (isCorrect) score += 20;
+
+  document.querySelectorAll('.opt-btn').forEach((b, i) => {
+    b.disabled = true;
+    if (i === q.answer) b.classList.add('correct');
+    else if (i === idx) b.classList.add('wrong');
+  });
+
+  const fb = document.getElementById('feedback');
+  fb.className = `feedback ${isCorrect ? 'correct' : 'wrong'}`;
+  fb.style.display = 'block';
+  fb.innerHTML = `<strong>${isCorrect ? '✓ 정답!' : '✗ 오답!'}</strong><div class="expl">${q.explanation}</div>`;
+
+  const nb = document.getElementById('next-btn');
+  nb.style.display = 'block';
+  nb.textContent = current + 1 < 5 ? '다음 문제 →' : '결과 보기 →';
+}
+
+function nextQuestion() {
+  current++;
+  if (current < 5) showQuestion();
+  else showResult();
+}
+
+function showResult() {
+  show('result-screen');
+  const correct = score / 20;
+  const grade = score === 100 ? 'S' : score >= 80 ? 'A' : score >= 60 ? 'B' : score >= 40 ? 'C' : 'D';
+  const emoji = score === 100 ? '🏆' : score >= 80 ? '🎉' : score >= 60 ? '👍' : '📚';
+  document.getElementById('result-emoji').textContent = emoji;
+  document.getElementById('result-text').textContent = score >= 80 ? '훌륭한 시사 상식이에요!' : score >= 60 ? '꽤 잘 아시는군요!' : '더 공부해봐요!';
+  document.getElementById('r-score').textContent = `${score}점`;
+  document.getElementById('r-correct').textContent = `${correct}/5`;
+  document.getElementById('r-grade').textContent = grade;
+}
+</script>
+</body>
+</html>
