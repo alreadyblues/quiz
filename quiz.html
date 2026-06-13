@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>국내 시사 퀴즈</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f5f5f0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+    .container {
+      background: #fff;
+      border-radius: 16px;
+      padding: 2rem;
+      max-width: 600px;
+      width: 100%;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    }
+    h1 { font-size: 22px; font-weight: 600; color: #1a1a1a; margin-bottom: 0.4rem; }
+    .subtitle { font-size: 14px; color: #888; margin-bottom: 1.5rem; }
+    .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 1.5rem; }
+    .stat { background: #f5f5f0; border-radius: 10px; padding: 0.8rem; text-align: center; }
+    .stat-val { font-size: 18px; font-weight: 600; color: #1a1a1a; }
+    .stat-label { font-size: 12px; color: #888; margin-top: 2px; }
+    button.primary {
+      width: 100%; padding: 13px; background: #1a1a1a; color: #fff;
+      border: none; border-radius: 10px; font-size: 15px; font-weight: 500;
+      cursor: pointer; transition: opacity 0.15s;
+    }
+    button.primary:hover { opacity: 0.85; }
+    .progress-bar { background: #eee; border-radius: 4px; height: 5px; margin-bottom: 1.25rem; }
+    .progress-fill { background: #1a1a1a; height: 5px; border-radius: 4px; transition: width 0.3s; }
+    .meta { display: flex; justify-content: space-between; font-size: 13px; color: #888; margin-bottom: 1rem; }
+    .question-box {
+      background: #f9f9f7; border: 1px solid #e8e8e4; border-radius: 12px;
+      padding: 1.2rem; margin-bottom: 1.2rem;
+      font-size: 16px; line-height: 1.7; color: #1a1a1a;
+    }
+    .options { display: grid; gap: 10px; }
+    .opt-btn {
+      width: 100%; padding: 12px 16px; text-align: left;
+      background: #fff; border: 1px solid #ddd; border-radius: 10px;
+      font-size: 14px; line-height: 1.5; cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .opt-btn:hover:not(:disabled) { background: #f5f5f0; border-color: #bbb; }
+    .opt-btn.correct { background: #e8f5e9; border-color: #4caf50; color: #2e7d32; }
+    .opt-btn.wrong { background: #fce4ec; border-color: #e57373; color: #c62828; }
+    .opt-btn:disabled { cursor: default; }
+    .feedback {
+      margin-top: 1rem; padding: 1rem; border-radius: 10px;
+      font-size: 14px; line-height: 1.6; display: none;
+    }
+    .feedback.correct { background: #e8f5e9; border: 1px solid #a5d6a7; color: #2e7d32; }
+    .feedback.wrong { background: #fce4ec; border: 1px solid #f48fb1; color: #c62828; }
+    .feedback .expl { color: #555; font-size: 13px; margin-top: 4px; }
+    button.next-btn {
+      display: none; width: 100%; margin-top: 1rem; padding: 12px;
+      background: #1a1a1a; color: #fff; border: none; border-radius: 10px;
+      font-size: 14px; font-weight: 500; cursor: pointer;
+    }
+    button.next-btn:hover { opacity: 0.85; }
+    .result-emoji { font-size: 48px; text-align: center; margin-bottom: 1rem; }
+    .result-text { font-size: 15px; color: #555; text-align: center; margin-bottom: 1.5rem; }
+    .loading { text-align: center; padding: 3rem 0; }
+    .spinner {
+      width: 36px; height: 36px; border: 3px solid #eee; border-top-color: #1a1a1a;
+      border-radius: 50%; margin: 0 auto 1rem; animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading p { color: #888; font-size: 14px; }
+    .error { color: #c62828; text-align: center; padding: 2rem; font-size: 14px; }
+    .api-key-section { margin-bottom: 1.5rem; }
+    .api-key-section label { font-size: 13px; color: #555; display: block; margin-bottom: 6px; }
+    .api-key-section input {
+      width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px;
+      font-size: 14px; font-family: monospace; color: #1a1a1a;
+    }
+    .api-key-section input:focus { outline: none; border-color: #1a1a1a; }
+    .api-note { font-size: 12px; color: #aaa; margin-top: 4px; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- 시작 화면 -->
+  <div id="start-screen">
+    <div style="text-align:center; margin-bottom:1.5rem;">
+      <div style="font-size:40px; margin-bottom:0.5rem;">📰</div>
+      <h1>국내 시사 퀴즈</h1>
+      <p class="subtitle">AI가 실시간으로 생성하는 국내 시사 문제</p>
+    </div>
+    <div class="api-key-section">
+      <label>Anthropic API Key</label>
+      <input type="password" id="api-key-input" placeholder="sk-ant-..." />
+      <p class="api-note">* API 키는 이 기기에서만 사용되며 저장되지 않아요.</p>
+    </div>
+    <div class="stat-row">
+      <div class="stat"><div class="stat-val">5</div><div class="stat-label">문제</div></div>
+      <div class="stat"><div class="stat-val">4지선다</div><div class="stat-label">형식</div></div>
+      <div class="stat"><div class="stat-val">AI 생성</div><div class="stat-label">문제 출제</div></div>
+    </div>
+    <button class="primary" onclick="startGame()">게임 시작 →</button>
+  </div>
+
+  <!-- 로딩 화면 -->
+  <div id="loading-screen" class="hidden">
+    <div class="loading">
+      <div class="spinner"></div>
+      <p>AI가 문제를 만들고 있어요...</p>
+    </div>
+  </div>
+
+  <!-- 퀴즈 화면 -->
+  <div id="quiz-screen" class="hidden">
+    <div class="meta">
+      <span id="q-num"></span>
+      <span id="score-display"></span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+    <div class="question-box" id="q-text"></div>
+    <div class="options" id="options-container"></div>
+    <div class="feedback" id="feedback"></div>
+    <button class="next-btn" id="next-btn" onclick="nextQuestion()">다음 문제 →</button>
+  </div>
+
+  <!-- 결과 화면 -->
+  <div id="result-screen" class="hidden">
+    <div class="result-emoji" id="result-emoji"></div>
+    <p class="result-text" id="result-text"></p>
+    <div class="stat-row">
+      <div class="stat"><div class="stat-val" id="r-score"></div><div class="stat-label">점수</div></div>
+      <div class="stat"><div class="stat-val" id="r-correct"></div><div class="stat-label">정답</div></div>
+      <div class="stat"><div class="stat-val" id="r-grade"></div><div class="stat-label">등급</div></div>
+    </div>
+    <button class="primary" onclick="restartGame()">↺ 다시 하기</button>
+  </div>
+
+</div>
+
+<script>
+  let questions = [], current = 0, score = 0, answered = false;
+
+  function show(id) {
+    ['start-screen','loading-screen','quiz-screen','result-screen'].forEach(s => {
+      document.getElementById(s).classList.add('hidden');
+    });
+    document.getElementById(id).classList.remove('hidden');
+  }
+
+  async function startGame() {
+    const key = document.getElementById('api-key-input').value.trim();
+    if (!key) { alert('API 키를 입력해주세요.'); return; }
+    questions = []; current = 0; score = 0;
+    show('loading-screen');
+    await fetchQuestions(key);
+  }
+
+  async function fetchQuestions(key) {
+    const prompt = `당신은 한국 국내 시사 퀴즈 출제자입니다. 최근 한국의 정치, 경제, 사회, 문화 관련 시사 퀴즈 5문제를 JSON 형식으로만 만들어주세요. 다른 텍스트 없이 JSON만 출력하세요.
+
+형식:
+[
+  {
+    "question": "문제 내용",
+    "options": ["①선택지1", "②선택지2", "③선택지3", "④선택지4"],
+    "answer": 0,
+    "explanation": "해설 (2-3문장)"
+  }
+]
+
+answer는 0~3 인덱스입니다. 최근 2~3년 내 한국 시사 내용으로 출제해주세요.`;
+
+    try {
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": key,
+          "anthropic-version": "2023-06-01",
+          "anthropic-dangerous-direct-browser-access": "true"
+        },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-6",
+          max_tokens: 1000,
+          messages: [{ role: "user", content: prompt }]
+        })
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error.message);
+      const text = data.content[0].text.replace(/```json|```/g, '').trim();
+      questions = JSON.parse(text);
+      show('quiz-screen');
+      showQuestion();
+    } catch(e) {
+      show('start-screen');
+      alert('문제를 불러오지 못했어요. API 키를 확인해주세요.\n' + e.message);
+    }
+  }
+
+  function showQuestion() {
+    answered = false;
+    const q = questions[current];
+    document.getElementById('q-num').textContent = `문제 ${current + 1} / ${questions.length}`;
+    document.getElementById('score-display').textContent = `점수: ${score}점`;
+    document.getElementById('progress-fill').style.width = `${(current / questions.length) * 100}%`;
+    document.getElementById('q-text').textContent = q.question;
+    document.getElementById('feedback').style.display = 'none';
+    document.getElementById('next-btn').style.display = 'none';
+
+    const container = document.getElementById('options-container');
+    container.innerHTML = '';
+    q.options.forEach((opt, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'opt-btn';
+      btn.textContent = opt;
+      btn.onclick = () => selectAnswer(i);
+      container.appendChild(btn);
+    });
+  }
+
+  function selectAnswer(idx) {
+    if (answered) return;
+    answered = true;
+    const q = questions[current];
+    const isCorrect = idx === q.answer;
+    if (isCorrect) score += 20;
+
+    document.querySelectorAll('.opt-btn').forEach((b, i) => {
+      b.disabled = true;
+      if (i === q.answer) b.classList.add('correct');
+      else if (i === idx) b.classList.add('wrong');
+    });
+
+    const fb = document.getElementById('feedback');
+    fb.className = `feedback ${isCorrect ? 'correct' : 'wrong'}`;
+    fb.style.display = 'block';
+    fb.innerHTML = `<strong>${isCorrect ? '✓ 정답!' : '✗ 오답!'}</strong><div class="expl">${q.explanation}</div>`;
+
+    const nb = document.getElementById('next-btn');
+    nb.style.display = 'block';
+    nb.textContent = current + 1 < questions.length ? '다음 문제 →' : '결과 보기 →';
+  }
+
+  function nextQuestion() {
+    current++;
+    if (current < questions.length) showQuestion();
+    else showResult();
+  }
+
+  function showResult() {
+    show('result-screen');
+    const correct = score / 20;
+    const grade = score === 100 ? 'S' : score >= 80 ? 'A' : score >= 60 ? 'B' : score >= 40 ? 'C' : 'D';
+    const emoji = score === 100 ? '🏆' : score >= 80 ? '🎉' : score >= 60 ? '👍' : '📚';
+    document.getElementById('result-emoji').textContent = emoji;
+    document.getElementById('result-text').textContent = score >= 80 ? '훌륭한 시사 상식이에요!' : score >= 60 ? '꽤 잘 아시는군요!' : '더 공부해봐요!';
+    document.getElementById('r-score').textContent = `${score}점`;
+    document.getElementById('r-correct').textContent = `${correct}/5`;
+    document.getElementById('r-grade').textContent = grade;
+  }
+
+  function restartGame() { show('start-screen'); }
+</script>
+</body>
+</html>
