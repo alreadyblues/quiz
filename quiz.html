@@ -76,7 +76,6 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
     .loading p { color: #888; font-size: 14px; }
-    .error { color: #c62828; text-align: center; padding: 2rem; font-size: 14px; }
     .api-key-section { margin-bottom: 1.5rem; }
     .api-key-section label { font-size: 13px; color: #555; display: block; margin-bottom: 6px; }
     .api-key-section input {
@@ -91,7 +90,6 @@
 <body>
 <div class="container">
 
-  <!-- 시작 화면 -->
   <div id="start-screen">
     <div style="text-align:center; margin-bottom:1.5rem;">
       <div style="font-size:40px; margin-bottom:0.5rem;">📰</div>
@@ -99,9 +97,9 @@
       <p class="subtitle">AI가 실시간으로 생성하는 국내 시사 문제</p>
     </div>
     <div class="api-key-section">
-      <label>Anthropic API Key</label>
-      <input type="password" id="api-key-input" placeholder="sk-ant-..." />
-      <p class="api-note">* API 키는 이 기기에서만 사용되며 저장되지 않아요.</p>
+      <label>Google Gemini API Key</label>
+      <input type="password" id="api-key-input" placeholder="AIza..." />
+      <p class="api-note">* API 키는 이 기기에서만 사용되며 저장되지 않아요. <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:#1a1a1a;">키 발급받기 →</a></p>
     </div>
     <div class="stat-row">
       <div class="stat"><div class="stat-val">5</div><div class="stat-label">문제</div></div>
@@ -111,7 +109,6 @@
     <button class="primary" onclick="startGame()">게임 시작 →</button>
   </div>
 
-  <!-- 로딩 화면 -->
   <div id="loading-screen" class="hidden">
     <div class="loading">
       <div class="spinner"></div>
@@ -119,7 +116,6 @@
     </div>
   </div>
 
-  <!-- 퀴즈 화면 -->
   <div id="quiz-screen" class="hidden">
     <div class="meta">
       <span id="q-num"></span>
@@ -132,7 +128,6 @@
     <button class="next-btn" id="next-btn" onclick="nextQuestion()">다음 문제 →</button>
   </div>
 
-  <!-- 결과 화면 -->
   <div id="result-screen" class="hidden">
     <div class="result-emoji" id="result-emoji"></div>
     <p class="result-text" id="result-text"></p>
@@ -158,7 +153,7 @@
 
   async function startGame() {
     const key = document.getElementById('api-key-input').value.trim();
-    if (!key) { alert('API 키를 입력해주세요.'); return; }
+    if (!key) { alert('Gemini API 키를 입력해주세요.'); return; }
     questions = []; current = 0; score = 0;
     show('loading-screen');
     await fetchQuestions(key);
@@ -180,23 +175,20 @@
 answer는 0~3 인덱스입니다. 최근 2~3년 내 한국 시사 내용으로 출제해주세요.`;
 
     try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": key,
-          "anthropic-version": "2023-06-01",
-          "anthropic-dangerous-direct-browser-access": "true"
-        },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-6",
-          max_tokens: 1000,
-          messages: [{ role: "user", content: prompt }]
-        })
-      });
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { temperature: 0.7, maxOutputTokens: 1500 }
+          })
+        }
+      );
       const data = await res.json();
       if (data.error) throw new Error(data.error.message);
-      const text = data.content[0].text.replace(/```json|```/g, '').trim();
+      const text = data.candidates[0].content.parts[0].text.replace(/```json|```/g, '').trim();
       questions = JSON.parse(text);
       show('quiz-screen');
       showQuestion();
